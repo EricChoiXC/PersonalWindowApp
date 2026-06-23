@@ -67,7 +67,7 @@ com.personal.windows.{app}
 - 构建工具：Maven（推荐）或 Gradle
 - 数据库：SQLite / H2 / HSQLDB（嵌入式数据库，随应用部署）
 - 日志：SLF4J + Logback / Log4j2
-- 打包：jpackage / launch4j / exe4j
+- 打包：Inno Setup
 
 ### 3.2 分层架构
 
