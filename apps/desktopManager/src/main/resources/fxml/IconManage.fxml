@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.personal.windows.desktopmanager.ui.IconManageController"
+            stylesheets="@../css/main-style.css">
+
+    <!-- 左侧：分组面板 -->
+    <left>
+        <VBox prefWidth="180" styleClass="group-panel">
+            <padding>
+                <Insets top="12" right="0" bottom="12" left="12"/>
+            </padding>
+
+            <Label text="分组" styleClass="panel-header" />
+
+            <Separator styleClass="panel-separator" />
+
+            <ListView fx:id="groupListView" styleClass="group-list" VBox.vgrow="ALWAYS" />
+
+            <Separator styleClass="panel-separator" />
+
+            <Button fx:id="addGroupButton" text="＋ 新建分组"
+                    styleClass="add-group-button" maxWidth="Infinity"
+                    onAction="#onAddGroup" />
+        </VBox>
+    </left>
+
+    <!-- 右侧：文件面板 -->
+    <center>
+        <VBox styleClass="file-panel">
+            <padding>
+                <Insets top="12" right="12" bottom="12" left="12"/>
+            </padding>
+
+            <HBox styleClass="file-panel-header">
+                <Label fx:id="currentGroupLabel" styleClass="current-group-label"
+                       text="分组名：未命名" />
+                <Region HBox.hgrow="ALWAYS" />
+            </HBox>
+
+            <Separator styleClass="panel-separator" />
+
+            <Label fx:id="emptyHintLabel" text="此分组下暂无文件"
+                   styleClass="empty-hint" visible="false"
+                   VBox.vgrow="ALWAYS" />
+
+            <ListView fx:id="fileListView" styleClass="file-list" VBox.vgrow="ALWAYS" />
+
+            <Separator styleClass="panel-separator" />
+
+            <HBox styleClass="file-panel-footer">
+                <Label fx:id="fileCountLabel" styleClass="file-count-label"
+                       text="共 0 个文件" />
+                <Region HBox.hgrow="ALWAYS" />
+            </HBox>
+        </VBox>
+    </center>
+</BorderPane>

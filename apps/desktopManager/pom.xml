@@ -16,11 +16,12 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <javafx.version>17.0.11</javafx.version>
-        <junit.version>5.10.1</junit.version>
-        <slf4j.version>2.0.9</slf4j.version>
-        <logback.version>1.4.14</logback.version>
-        <sqlite.version>3.44.1.0</sqlite.version>
+        <javafx.version>17.0.13</javafx.version>
+        <junit.version>5.10.3</junit.version>
+        <slf4j.version>2.0.13</slf4j.version>
+        <logback.version>1.5.6</logback.version>
+        <jna.version>5.14.0</jna.version>
+        <jackson.version>2.17.2</jackson.version>
     </properties>
 
     <dependencies>
@@ -36,11 +37,23 @@
             <version>${javafx.version}</version>
         </dependency>
 
-        <!-- SQLite -->
+        <!-- JNA (Windows API) -->
         <dependency>
-            <groupId>org.xerial</groupId>
-            <artifactId>sqlite-jdbc</artifactId>
-            <version>${sqlite.version}</version>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>${jna.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna-platform</artifactId>
+            <version>${jna.version}</version>
+        </dependency>
+
+        <!-- JSON -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
 
         <!-- Logging -->
@@ -65,7 +78,7 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>5.8.0</version>
+            <version>5.12.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
