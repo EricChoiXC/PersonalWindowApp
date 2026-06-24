@@ -24,6 +24,7 @@ public final class WindowsApiUtil {
     private static final int WM_SETTINGCHANGE = 0x001A;
     private static final int SMTO_ABORTIFHUNG = 0x0002;
     private static final int FILE_ATTRIBUTE_HIDDEN = 0x2;
+    private static final int INVALID_FILE_ATTRIBUTES = -1;
 
     private static final String EXPLORER_ADVANCED_KEY =
             "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced";
@@ -49,6 +50,7 @@ public final class WindowsApiUtil {
     interface Kernel32Lib extends Library {
         Kernel32Lib INSTANCE = Native.load("kernel32", Kernel32Lib.class);
 
+        int GetFileAttributesW(String lpFileName);
         boolean SetFileAttributesW(String lpFileName, int dwFileAttributes);
     }
 
@@ -76,7 +78,11 @@ public final class WindowsApiUtil {
 
     public static void hideFile(String filePath) {
         try {
-            boolean result = Kernel32Lib.INSTANCE.SetFileAttributesW(filePath, FILE_ATTRIBUTE_HIDDEN);
+            int attrs = Kernel32Lib.INSTANCE.GetFileAttributesW(filePath);
+            if (attrs == INVALID_FILE_ATTRIBUTES) {
+                throw new DesktopIconException("获取文件属性失败: " + filePath);
+            }
+            boolean result = Kernel32Lib.INSTANCE.SetFileAttributesW(filePath, attrs | FILE_ATTRIBUTE_HIDDEN);
             if (!result) {
                 throw new DesktopIconException("设置文件隐藏属性失败: " + filePath);
             }

@@ -1,5 +1,11 @@
 package com.personal.windows.desktopmanager;
 
+import java.io.File;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -24,10 +30,14 @@ import com.personal.windows.desktopmanager.service.impl.DesktopIconServiceImpl;
 import com.personal.windows.desktopmanager.service.impl.GroupServiceImpl;
 import com.personal.windows.desktopmanager.ui.IconManageController;
 import com.personal.windows.desktopmanager.ui.SystemTrayManager;
+import com.personal.windows.desktopmanager.util.AppPathUtil;
 
 public class DesktopManagerApplication extends Application {
 
     private static final Logger log = LoggerFactory.getLogger(DesktopManagerApplication.class);
+
+    private static FileLock instanceLock;
+    private static FileChannel lockChannel;
 
     private IConfigService configService;
     private IDesktopIconService desktopIconService;
@@ -43,6 +53,9 @@ public class DesktopManagerApplication extends Application {
 
         initServices();
         initTrayAndWindow(primaryStage);
+
+        primaryStage.show();
+        log.info("主界面已显示");
 
         CompletableFuture.runAsync(this::initializeApp);
 
@@ -103,15 +116,17 @@ public class DesktopManagerApplication extends Application {
 
             List<DesktopFileVo> files = desktopIconService.scanDesktopFiles();
             String defaultGroupId = groupService.getDefaultGroupId();
+            int hiddenCount = 0;
             for (DesktopFileVo file : files) {
                 try {
                     desktopIconService.hideFile(file.getFilePath());
                     configService.setFileGroup(file.getFilePath(), defaultGroupId);
+                    hiddenCount++;
                 } catch (Exception e) {
                     log.warn("隐藏文件失败: {}", file.getFilePath(), e);
                 }
             }
-            log.info("初始扫描完成，共 {} 个文件", files.size());
+            log.info("初始扫描完成，已隐藏 {}/{} 个文件", hiddenCount, files.size());
 
             desktopIconService.startFileWatcher(file -> {
                 String gid = groupService.getDefaultGroupId();
@@ -153,6 +168,7 @@ public class DesktopManagerApplication extends Application {
                 log.error("恢复桌面图标失败", e);
             }
             desktopIconService.stopFileWatcher();
+            releaseInstanceLock();
         }).thenRun(() -> Platform.runLater(() -> {
             trayManager.removeTrayIcon();
             if (mainStage != null) {
@@ -178,9 +194,59 @@ public class DesktopManagerApplication extends Application {
         if (desktopIconService != null) {
             desktopIconService.stopFileWatcher();
         }
+        releaseInstanceLock();
+    }
+
+    private static void releaseInstanceLock() {
+        try {
+            if (instanceLock != null && instanceLock.isValid()) {
+                instanceLock.release();
+            }
+            if (lockChannel != null && lockChannel.isOpen()) {
+                lockChannel.close();
+            }
+        } catch (Exception e) {
+            log.warn("释放实例锁失败", e);
+        }
     }
 
     public static void main(String[] args) {
+        System.setProperty("file.encoding", "UTF-8");
+        System.setProperty("sun.jnu.encoding", "UTF-8");
+
+        if (!acquireInstanceLock()) {
+            showAlreadyRunningDialog();
+            return;
+        }
+
+        Runtime.getRuntime().addShutdownHook(new Thread(DesktopManagerApplication::releaseInstanceLock));
         launch(args);
+    }
+
+    private static boolean acquireInstanceLock() {
+        try {
+            Path appDataDir = AppPathUtil.getAppDataDir();
+            Files.createDirectories(appDataDir);
+            File lockFile = appDataDir.resolve(".instance.lock").toFile();
+            RandomAccessFile raf = new RandomAccessFile(lockFile, "rw");
+            lockChannel = raf.getChannel();
+            instanceLock = lockChannel.tryLock();
+            if (instanceLock == null) {
+                lockChannel.close();
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("获取实例锁失败", e);
+            return true;
+        }
+    }
+
+    private static void showAlreadyRunningDialog() {
+        try {
+            java.awt.Toolkit.getDefaultToolkit().beep();
+        } catch (Exception ignored) {
+        }
+        System.exit(0);
     }
 }

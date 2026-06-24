@@ -1,9 +1,9 @@
 package com.personal.windows.desktopmanager.ui;
 
 import java.awt.AWTException;
-import java.awt.CheckboxMenuItem;
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
 import java.awt.Image;
-import java.awt.Menu;
 import java.awt.MenuItem;
 import java.awt.PopupMenu;
 import java.awt.SystemTray;
@@ -28,6 +28,7 @@ public class SystemTrayManager {
     private final Runnable onExit;
 
     private TrayIcon trayIcon;
+    private Font menuFont;
 
     public SystemTrayManager(IDesktopIconService desktopIconService,
                              Runnable onShowWindow, Runnable onExit) {
@@ -43,16 +44,19 @@ public class SystemTrayManager {
         }
 
         SystemTray tray = SystemTray.getSystemTray();
+        menuFont = resolveCjkFont();
 
         PopupMenu popup = new PopupMenu();
 
         MenuItem showItem = new MenuItem("图标");
+        showItem.setFont(menuFont);
         showItem.addActionListener(e -> onShowWindow.run());
         popup.add(showItem);
 
         popup.addSeparator();
 
         MenuItem exitItem = new MenuItem("退出");
+        exitItem.setFont(menuFont);
         exitItem.addActionListener(e -> onExit.run());
         popup.add(exitItem);
 
@@ -102,5 +106,19 @@ public class SystemTrayManager {
         g.drawString("D", 2, 13);
         g.dispose();
         return image;
+    }
+
+    private Font resolveCjkFont() {
+        String[] candidates = {"Microsoft YaHei", "SimSun", "SimHei", "FangSong", "KaiTi"};
+        Font[] allFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
+        for (String name : candidates) {
+            for (Font f : allFonts) {
+                if (name.equalsIgnoreCase(f.getFontName()) || name.equalsIgnoreCase(f.getFamily())) {
+                    log.debug("托盘菜单字体: {}", f.getFontName());
+                    return f.deriveFont(Font.PLAIN, 12f);
+                }
+            }
+        }
+        return new Font(Font.DIALOG, Font.PLAIN, 12);
     }
 }
