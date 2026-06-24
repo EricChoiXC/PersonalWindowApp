@@ -12,3 +12,6 @@ target/
 *.sqlite
 
 logs/
+
+# 安装包输出（忽略 .exe，保留 .iss 脚本）
+installer/*.exe

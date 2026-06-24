@@ -16,7 +16,7 @@
 | 配置存储 | JSON (Jackson/Gson) | 轻量结构化存储，存于 %APPDATA% |
 | 日志 | SLF4J + Logback | 符合规范要求 |
 | 构建工具 | Maven 3.8+ | 符合规范要求 |
-| 打包 | jpackage | 生成 Windows 安装包 (.msi) |
+| 打包 | jpackage + Inno Setup | jpackage 生成运行时镜像，Inno Setup 生成 Windows 安装包 (.exe) |
 
 ## 3. 架构设计
 
@@ -192,12 +192,14 @@ Windows 自启动通过注册表实现：
 ## 8. 打包方案
 
 1. Maven 编译构建 jar
-2. jpackage 生成 Windows .msi 安装包
-3. 安装包包含：
-   - 应用主程序
-   - 应用图标（多尺寸 .ico）
-   - 依赖的 JRE（通过 jlink 精简）
-   - 自启动选项
+2. jpackage 生成运行时镜像（含精简 JRE + 应用 JAR + 依赖）
+3. Inno Setup 将运行时镜像打包为 Windows .exe 安装包
+4. 安装包包含：
+   - 应用主程序（jpackage 生成的 EXE 启动器）
+   - 精简 JRE（通过 jpackage 自动处理）
+   - 应用依赖（JavaFX、JNA 等）
+   - 开始菜单快捷方式、桌面快捷方式
+   - 卸载程序
 
 ## 9. 依赖清单
 
