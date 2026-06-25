@@ -4,11 +4,14 @@ import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.platform.win32.Advapi32Util;
-import com.sun.jna.platform.win32.WinReg;
+import com.sun.jna.platform.win32.Kernel32;
+import com.sun.jna.platform.win32.WinDef.DWORD;
 import com.sun.jna.platform.win32.WinDef.HWND;
 import com.sun.jna.platform.win32.WinDef.LPARAM;
 import com.sun.jna.platform.win32.WinDef.LRESULT;
 import com.sun.jna.platform.win32.WinDef.WPARAM;
+import com.sun.jna.platform.win32.WinNT;
+import com.sun.jna.platform.win32.WinReg;
 import com.sun.jna.ptr.IntByReference;
 
 import com.personal.windows.desktopmanager.exception.DesktopIconException;
@@ -23,7 +26,6 @@ public final class WindowsApiUtil {
     private static final int HWND_BROADCAST = 0xFFFF;
     private static final int WM_SETTINGCHANGE = 0x001A;
     private static final int SMTO_ABORTIFHUNG = 0x0002;
-    private static final int FILE_ATTRIBUTE_HIDDEN = 0x2;
     private static final int INVALID_FILE_ATTRIBUTES = -1;
 
     private static final String EXPLORER_ADVANCED_KEY =
@@ -45,13 +47,6 @@ public final class WindowsApiUtil {
 
         LRESULT SendMessageTimeoutW(HWND hWnd, int msg, WPARAM wParam, LPARAM lParam,
                                     int fuFlags, int uTimeout, IntByReference lpdwResult);
-    }
-
-    interface Kernel32Lib extends Library {
-        Kernel32Lib INSTANCE = Native.load("kernel32", Kernel32Lib.class);
-
-        int GetFileAttributesW(String lpFileName);
-        boolean SetFileAttributesW(String lpFileName, int dwFileAttributes);
     }
 
     public static void hideDesktopIcons() {
@@ -78,11 +73,12 @@ public final class WindowsApiUtil {
 
     public static void hideFile(String filePath) {
         try {
-            int attrs = Kernel32Lib.INSTANCE.GetFileAttributesW(filePath);
+            int attrs = Kernel32.INSTANCE.GetFileAttributes(filePath);
             if (attrs == INVALID_FILE_ATTRIBUTES) {
                 throw new DesktopIconException("获取文件属性失败: " + filePath);
             }
-            boolean result = Kernel32Lib.INSTANCE.SetFileAttributesW(filePath, attrs | FILE_ATTRIBUTE_HIDDEN);
+            int newAttrs = attrs | WinNT.FILE_ATTRIBUTE_HIDDEN;
+            boolean result = Kernel32.INSTANCE.SetFileAttributes(filePath, new DWORD(newAttrs));
             if (!result) {
                 throw new DesktopIconException("设置文件隐藏属性失败: " + filePath);
             }
@@ -96,11 +92,12 @@ public final class WindowsApiUtil {
 
     public static void unhideFile(String filePath) {
         try {
-            int attrs = Kernel32Lib.INSTANCE.GetFileAttributesW(filePath);
+            int attrs = Kernel32.INSTANCE.GetFileAttributes(filePath);
             if (attrs == INVALID_FILE_ATTRIBUTES) {
                 throw new DesktopIconException("获取文件属性失败: " + filePath);
             }
-            boolean result = Kernel32Lib.INSTANCE.SetFileAttributesW(filePath, attrs & ~FILE_ATTRIBUTE_HIDDEN);
+            int newAttrs = attrs & ~WinNT.FILE_ATTRIBUTE_HIDDEN;
+            boolean result = Kernel32.INSTANCE.SetFileAttributes(filePath, new DWORD(newAttrs));
             if (!result) {
                 throw new DesktopIconException("取消文件隐藏属性失败: " + filePath);
             }
@@ -113,11 +110,11 @@ public final class WindowsApiUtil {
     }
 
     public static boolean isFileHidden(String filePath) {
-        int attrs = Kernel32Lib.INSTANCE.GetFileAttributesW(filePath);
+        int attrs = Kernel32.INSTANCE.GetFileAttributes(filePath);
         if (attrs == INVALID_FILE_ATTRIBUTES) {
             return false;
         }
-        return (attrs & FILE_ATTRIBUTE_HIDDEN) != 0;
+        return (attrs & WinNT.FILE_ATTRIBUTE_HIDDEN) != 0;
     }
 
     public static String getDesktopPathFromRegistry() {

@@ -3,7 +3,7 @@
 
 #define MyAppName "DesktopManager"
 #define MyAppNameCN "桌面管家"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "Personal"
 #ifndef MyAppSourceDir
   #define MyAppSourceDir "..\apps\desktopManager\target\dist"

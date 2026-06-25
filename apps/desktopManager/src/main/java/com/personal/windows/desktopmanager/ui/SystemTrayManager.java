@@ -1,6 +1,8 @@
 package com.personal.windows.desktopmanager.ui;
 
 import java.awt.AWTException;
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.MenuItem;
 import java.awt.PopupMenu;
@@ -26,6 +28,9 @@ public class SystemTrayManager {
 
     private TrayIcon trayIcon;
 
+    /** 菜单栏中文文本字体 — 避免 AWT 默认字体不支持中文导致显示为"口" */
+    private Font menuFont;
+
     public SystemTrayManager(Runnable onShowWindow, Runnable onExit, Stage ownerStage) {
         this.onShowWindow = onShowWindow;
         this.onExit = onExit;
@@ -41,10 +46,15 @@ public class SystemTrayManager {
         trayIcon = new TrayIcon(iconImage, "桌面管家");
         trayIcon.setImageAutoSize(true);
 
+        // 解析系统中可用的中文字体，避免 AWT MenuItem 显示中文为"口"
+        menuFont = resolveCjkFont();
+
         PopupMenu popupMenu = new PopupMenu();
         MenuItem showItem = new MenuItem("图标");
+        showItem.setFont(menuFont);
         showItem.addActionListener(e -> onShowWindow.run());
         MenuItem exitItem = new MenuItem("退出");
+        exitItem.setFont(menuFont);
         exitItem.addActionListener(e -> onExit.run());
         popupMenu.add(showItem);
         popupMenu.addSeparator();
@@ -93,5 +103,23 @@ public class SystemTrayManager {
         g.drawString("D", 2, 13);
         g.dispose();
         return image;
+    }
+
+    /**
+     * 从系统中查找可用的中文字体，用于 AWT MenuItem 中文文本渲染。
+     * 若系统无候选字体则回退到 DIALOG，此时中文可能仍显示为"口"。
+     */
+    private Font resolveCjkFont() {
+        String[] candidates = {"Microsoft YaHei", "SimSun", "SimHei", "FangSong", "KaiTi"};
+        Font[] allFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
+        for (String name : candidates) {
+            for (Font f : allFonts) {
+                if (name.equalsIgnoreCase(f.getFontName()) || name.equalsIgnoreCase(f.getFamily())) {
+                    log.debug("托盘菜单字体: {}", f.getFontName());
+                    return f.deriveFont(Font.PLAIN, 12f);
+                }
+            }
+        }
+        return new Font(Font.DIALOG, Font.PLAIN, 12);
     }
 }
