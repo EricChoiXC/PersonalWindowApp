@@ -2,7 +2,8 @@ package com.personal.windows.desktopmanager.ui;
 
 import java.awt.AWTException;
 import java.awt.Image;
-import java.awt.MouseInfo;
+import java.awt.MenuItem;
+import java.awt.PopupMenu;
 import java.awt.SystemTray;
 import java.awt.Toolkit;
 import java.awt.TrayIcon;
@@ -11,11 +12,6 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.net.URL;
 
-import javafx.application.Platform;
-import javafx.scene.Node;
-import javafx.scene.control.ContextMenu;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.SeparatorMenuItem;
 import javafx.stage.Stage;
 
 import org.slf4j.Logger;
@@ -27,14 +23,12 @@ public class SystemTrayManager {
 
     private final Runnable onShowWindow;
     private final Runnable onExit;
-    private final Stage ownerStage;
 
     private TrayIcon trayIcon;
 
     public SystemTrayManager(Runnable onShowWindow, Runnable onExit, Stage ownerStage) {
         this.onShowWindow = onShowWindow;
         this.onExit = onExit;
-        this.ownerStage = ownerStage;
     }
 
     public void createTrayIcon() {
@@ -44,16 +38,24 @@ public class SystemTrayManager {
         }
 
         Image iconImage = createTrayImage();
-        trayIcon = new TrayIcon(iconImage, "桌面管家", null);
+        trayIcon = new TrayIcon(iconImage, "桌面管家");
         trayIcon.setImageAutoSize(true);
+
+        PopupMenu popupMenu = new PopupMenu();
+        MenuItem showItem = new MenuItem("图标");
+        showItem.addActionListener(e -> onShowWindow.run());
+        MenuItem exitItem = new MenuItem("退出");
+        exitItem.addActionListener(e -> onExit.run());
+        popupMenu.add(showItem);
+        popupMenu.addSeparator();
+        popupMenu.add(exitItem);
+        trayIcon.setPopupMenu(popupMenu);
 
         trayIcon.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
                     onShowWindow.run();
-                } else if (e.getButton() == MouseEvent.BUTTON3) {
-                    showContextMenu(e);
                 }
             }
         });
@@ -64,43 +66,6 @@ public class SystemTrayManager {
         } catch (AWTException e) {
             log.error("创建系统托盘失败", e);
         }
-    }
-
-    private void showContextMenu(MouseEvent e) {
-        double screenX = e.getXOnScreen();
-        double screenY = e.getYOnScreen();
-        if (screenX <= 0 && screenY <= 0) {
-            java.awt.PointerInfo pi = MouseInfo.getPointerInfo();
-            if (pi != null) {
-                final double fx = pi.getLocation().x;
-                final double fy = pi.getLocation().y;
-                Platform.runLater(() -> showJavaFXMenu(fx, fy));
-                return;
-            }
-        }
-        final double fx = screenX;
-        final double fy = screenY;
-        Platform.runLater(() -> showJavaFXMenu(fx, fy));
-    }
-
-    private void showJavaFXMenu(double screenX, double screenY) {
-        Node anchor = ownerStage.getScene() != null ? ownerStage.getScene().getRoot() : null;
-        if (anchor == null) {
-            log.warn("无法获取 JavaFX Scene 根节点，右键菜单无法显示");
-            return;
-        }
-
-        ContextMenu menu = new ContextMenu();
-        menu.setStyle("-fx-font-family: 'Microsoft YaHei', 'SimSun', 'SimHei', sans-serif;");
-
-        MenuItem showItem = new MenuItem("图标");
-        showItem.setOnAction(ev -> onShowWindow.run());
-
-        MenuItem exitItem = new MenuItem("退出");
-        exitItem.setOnAction(ev -> onExit.run());
-
-        menu.getItems().addAll(showItem, new SeparatorMenuItem(), exitItem);
-        menu.show(anchor, screenX, screenY);
     }
 
     public void removeTrayIcon() {
