@@ -38,6 +38,7 @@ import com.personal.windows.desktopmanager.model.DesktopFileVo;
 import com.personal.windows.desktopmanager.model.GroupDto;
 import com.personal.windows.desktopmanager.model.GroupVo;
 import com.personal.windows.desktopmanager.service.IGroupService;
+import com.personal.windows.desktopmanager.util.FontUtil;
 
 public class IconManageController {
 
@@ -226,13 +227,13 @@ public class IconManageController {
         boolean isDefaultGroup = groupService != null
                 && group.getId().equals(groupService.getDefaultGroupId());
 
-        MenuItem renameItem = new MenuItem("重命名");
+        MenuItem renameItem = new MenuItem(FontUtil.text("重命名", "Rename"));
         if (isDefaultGroup) {
             renameItem.setDisable(true);
         }
         renameItem.setOnAction(e -> showRenameDialog(group));
 
-        MenuItem deleteItem = new MenuItem("删除");
+        MenuItem deleteItem = new MenuItem(FontUtil.text("删除", "Delete"));
         if (isDefaultGroup) {
             deleteItem.setDisable(true);
         } else if (group.getFileCount() > 0) {

@@ -1,23 +1,21 @@
 package com.personal.windows.desktopmanager.ui;
 
-import java.awt.AWTException;
-import java.awt.Font;
-import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.MenuItem;
 import java.awt.PopupMenu;
 import java.awt.SystemTray;
 import java.awt.Toolkit;
 import java.awt.TrayIcon;
+import java.awt.AWTException;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.net.URL;
 
-import javafx.stage.Stage;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.personal.windows.desktopmanager.util.FontUtil;
 
 public class SystemTrayManager {
 
@@ -28,10 +26,7 @@ public class SystemTrayManager {
 
     private TrayIcon trayIcon;
 
-    /** 菜单栏中文文本字体 — 避免 AWT 默认字体不支持中文导致显示为"口" */
-    private Font menuFont;
-
-    public SystemTrayManager(Runnable onShowWindow, Runnable onExit, Stage ownerStage) {
+    public SystemTrayManager(Runnable onShowWindow, Runnable onExit) {
         this.onShowWindow = onShowWindow;
         this.onExit = onExit;
     }
@@ -43,23 +38,10 @@ public class SystemTrayManager {
         }
 
         Image iconImage = createTrayImage();
-        trayIcon = new TrayIcon(iconImage, "桌面管家");
+        trayIcon = new TrayIcon(iconImage, FontUtil.text("桌面管家", "Desktop Manager"));
         trayIcon.setImageAutoSize(true);
 
-        // 解析系统中可用的中文字体，避免 AWT MenuItem 显示中文为"口"
-        menuFont = resolveCjkFont();
-
-        PopupMenu popupMenu = new PopupMenu();
-        MenuItem showItem = new MenuItem("图标");
-        showItem.setFont(menuFont);
-        showItem.addActionListener(e -> onShowWindow.run());
-        MenuItem exitItem = new MenuItem("退出");
-        exitItem.setFont(menuFont);
-        exitItem.addActionListener(e -> onExit.run());
-        popupMenu.add(showItem);
-        popupMenu.addSeparator();
-        popupMenu.add(exitItem);
-        trayIcon.setPopupMenu(popupMenu);
+        trayIcon.setPopupMenu(createPopupMenu());
 
         trayIcon.addMouseListener(new MouseAdapter() {
             @Override
@@ -85,6 +67,22 @@ public class SystemTrayManager {
         }
     }
 
+    private PopupMenu createPopupMenu() {
+        PopupMenu popupMenu = new PopupMenu();
+
+        MenuItem showItem = new MenuItem(FontUtil.text("主窗口", "Show Window"));
+        showItem.addActionListener(e -> onShowWindow.run());
+
+        MenuItem exitItem = new MenuItem(FontUtil.text("退出", "Exit"));
+        exitItem.addActionListener(e -> onExit.run());
+
+        popupMenu.add(showItem);
+        popupMenu.addSeparator();
+        popupMenu.add(exitItem);
+
+        return popupMenu;
+    }
+
     private Image createTrayImage() {
         URL iconUrl = getClass().getResource("/images/app-icon.png");
         if (iconUrl != null) {
@@ -103,23 +101,5 @@ public class SystemTrayManager {
         g.drawString("D", 2, 13);
         g.dispose();
         return image;
-    }
-
-    /**
-     * 从系统中查找可用的中文字体，用于 AWT MenuItem 中文文本渲染。
-     * 若系统无候选字体则回退到 DIALOG，此时中文可能仍显示为"口"。
-     */
-    private Font resolveCjkFont() {
-        String[] candidates = {"Microsoft YaHei", "SimSun", "SimHei", "FangSong", "KaiTi"};
-        Font[] allFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
-        for (String name : candidates) {
-            for (Font f : allFonts) {
-                if (name.equalsIgnoreCase(f.getFontName()) || name.equalsIgnoreCase(f.getFamily())) {
-                    log.debug("托盘菜单字体: {}", f.getFontName());
-                    return f.deriveFont(Font.PLAIN, 12f);
-                }
-            }
-        }
-        return new Font(Font.DIALOG, Font.PLAIN, 12);
     }
 }

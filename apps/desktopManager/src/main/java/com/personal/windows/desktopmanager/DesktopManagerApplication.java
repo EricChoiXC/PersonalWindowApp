@@ -82,8 +82,7 @@ public class DesktopManagerApplication extends Application {
 
         trayManager = new SystemTrayManager(
                 this::showMainWindow,
-                this::exitApplication,
-                primaryStage);
+                this::exitApplication);
         trayManager.createTrayIcon();
     }
 
