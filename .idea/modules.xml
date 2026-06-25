@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/PersonalWindowApp.iml" filepath="$PROJECT_DIR$/.idea/PersonalWindowApp.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/desktopManager/desktopManager.iml" filepath="$PROJECT_DIR$/apps/desktopManager/desktopManager.iml" />
     </modules>
   </component>
 </project>

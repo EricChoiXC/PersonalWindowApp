@@ -72,11 +72,15 @@ public class SystemTrayManager {
         if (screenX <= 0 && screenY <= 0) {
             java.awt.PointerInfo pi = MouseInfo.getPointerInfo();
             if (pi != null) {
-                screenX = pi.getLocation().x;
-                screenY = pi.getLocation().y;
+                final double fx = pi.getLocation().x;
+                final double fy = pi.getLocation().y;
+                Platform.runLater(() -> showJavaFXMenu(fx, fy));
+                return;
             }
         }
-        Platform.runLater(() -> showJavaFXMenu(screenX, screenY));
+        final double fx = screenX;
+        final double fy = screenY;
+        Platform.runLater(() -> showJavaFXMenu(fx, fy));
     }
 
     private void showJavaFXMenu(double screenX, double screenY) {
