@@ -63,9 +63,10 @@ public class DesktopManagerApplication extends Application {
         primaryStage.show();
         log.info("主界面已显示");
 
-        iconManageController.loadData();
-
-        CompletableFuture.runAsync(this::initializeApp);
+        CompletableFuture.runAsync(() -> {
+            initializeApp();
+            Platform.runLater(() -> iconManageController.loadData());
+        });
 
         log.info("DesktopManager 启动完成");
     }
@@ -121,6 +122,8 @@ public class DesktopManagerApplication extends Application {
     private void initializeApp() {
         try {
             desktopIconService.hideDesktopIcons();
+
+            groupService.listGroups();
 
             List<DesktopFileVo> files = desktopIconService.scanDesktopFiles();
             String defaultGroupId = groupService.getDefaultGroupId();

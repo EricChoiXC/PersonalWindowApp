@@ -40,6 +40,14 @@ public class GroupServiceImpl implements IGroupService {
     @Override
     public List<GroupVo> listGroups() {
         List<GroupDo> groups = configService.loadGroups();
+        if (groups.isEmpty()) {
+            String defaultId = getDefaultGroupId();
+            GroupDo defaultGroup = new GroupDo(defaultId, "未命名", 0);
+            groups.add(defaultGroup);
+            configService.saveGroups(groups);
+            log.info("已自动创建默认分组: {}", defaultId);
+        }
+
         Map<String, String> mapping = configService.loadFileGroupMapping();
 
         Map<String, Integer> fileCounts = computeFileCounts(mapping);

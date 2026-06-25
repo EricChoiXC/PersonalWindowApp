@@ -1,5 +1,8 @@
 package com.personal.windows.desktopmanager.ui;
 
+import java.awt.Desktop;
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -82,11 +85,21 @@ public class IconManageController {
 
     public void loadData() {
         if (groupService == null) {
+            log.warn("loadData: groupService 尚未初始化");
             return;
         }
         refreshGroupList();
-        if (!groupItems.isEmpty()) {
-            groupListView.getSelectionModel().select(0);
+        if (groupItems.isEmpty()) {
+            currentGroupLabel.setText("分组名：无分组");
+            fileCountLabel.setText("共 0 个文件");
+            emptyHintLabel.setVisible(true);
+            fileListView.setVisible(false);
+            return;
+        }
+        groupListView.getSelectionModel().select(0);
+        GroupVo selected = groupListView.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            loadFilesForGroup(selected.getId());
         }
     }
 
@@ -170,6 +183,14 @@ public class IconManageController {
                 content.putString(cell.getItem().getFilePath());
                 db.setContent(content);
                 event.consume();
+            });
+
+            cell.setOnMouseClicked(event -> {
+                if (event.getButton() == MouseButton.PRIMARY
+                        && event.getClickCount() == 2
+                        && cell.getItem() != null) {
+                    executeFile(cell.getItem().getFilePath());
+                }
             });
 
             return cell;
@@ -334,5 +355,19 @@ public class IconManageController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void executeFile(String filePath) {
+        try {
+            File file = new File(filePath);
+            if (!file.exists()) {
+                showAlert("错误", "文件不存在: " + filePath);
+                return;
+            }
+            Desktop.getDesktop().open(file);
+        } catch (IOException e) {
+            log.error("执行文件失败: {}", filePath, e);
+            showAlert("错误", "无法打开文件: " + e.getMessage());
+        }
     }
 }
