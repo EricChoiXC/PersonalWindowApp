@@ -47,6 +47,7 @@ public class SystemTrayManager {
         menuFont = resolveCjkFont();
 
         PopupMenu popup = new PopupMenu();
+        popup.setFont(menuFont);
 
         MenuItem showItem = new MenuItem("图标");
         showItem.setFont(menuFont);
@@ -109,16 +110,34 @@ public class SystemTrayManager {
     }
 
     private Font resolveCjkFont() {
-        String[] candidates = {"Microsoft YaHei", "SimSun", "SimHei", "FangSong", "KaiTi"};
+        String[] candidates = {
+            "Microsoft YaHei", "微软雅黑", "Microsoft YaHei UI",
+            "SimSun", "宋体",
+            "SimHei", "黑体",
+            "Microsoft JhengHei", "微軟正黑體",
+            "FangSong", "仿宋",
+            "KaiTi", "楷体"
+        };
         Font[] allFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
         for (String name : candidates) {
             for (Font f : allFonts) {
                 if (name.equalsIgnoreCase(f.getFontName()) || name.equalsIgnoreCase(f.getFamily())) {
-                    log.debug("托盘菜单字体: {}", f.getFontName());
-                    return f.deriveFont(Font.PLAIN, 12f);
+                    Font derived = f.deriveFont(Font.PLAIN, 12f);
+                    if (derived.canDisplayUpTo("图标退出桌面管家") == -1) {
+                        log.info("托盘菜单字体: {}", f.getFontName());
+                        return derived;
+                    }
                 }
             }
         }
+        for (String name : candidates) {
+            Font f = new Font(name, Font.PLAIN, 12);
+            if (f.canDisplayUpTo("图标退出桌面管家") == -1) {
+                log.info("托盘菜单字体(直接创建): {}", name);
+                return f;
+            }
+        }
+        log.warn("未找到支持中文的字体，托盘菜单可能显示异常");
         return new Font(Font.DIALOG, Font.PLAIN, 12);
     }
 }

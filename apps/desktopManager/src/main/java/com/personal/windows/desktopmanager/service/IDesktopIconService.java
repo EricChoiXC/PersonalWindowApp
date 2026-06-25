@@ -21,5 +21,9 @@ public interface IDesktopIconService {
 
     void hideFile(String filePath);
 
+    void unhideFile(String filePath);
+
+    void unhideAllHiddenFiles();
+
     String getFileIconKey(String filePath);
 }

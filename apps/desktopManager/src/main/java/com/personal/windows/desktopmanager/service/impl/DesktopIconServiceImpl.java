@@ -9,6 +9,8 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -32,6 +34,7 @@ public class DesktopIconServiceImpl implements IDesktopIconService {
     private final AtomicBoolean watcherRunning = new AtomicBoolean(false);
     private volatile WatchService watchService;
     private volatile Thread watcherThread;
+    private final Set<String> hiddenFiles = ConcurrentHashMap.newKeySet();
 
     public DesktopIconServiceImpl() {
         this.desktopPath = Path.of(resolveDesktopPath());
@@ -114,12 +117,13 @@ public class DesktopIconServiceImpl implements IDesktopIconService {
                                 break;
                             }
                             try {
-                                if (Files.exists(fullPath) && !Files.isHidden(fullPath)) {
-                                    WindowsApiUtil.hideFile(fullPath.toString());
-                                    DesktopFileVo vo = buildDesktopFileVo(fullPath);
-                                    onNewFile.accept(vo);
-                                    log.debug("新文件已加入: {}", fullPath);
-                                }
+                            if (Files.exists(fullPath) && !Files.isHidden(fullPath)) {
+                                WindowsApiUtil.hideFile(fullPath.toString());
+                                hiddenFiles.add(fullPath.toString());
+                                DesktopFileVo vo = buildDesktopFileVo(fullPath);
+                                onNewFile.accept(vo);
+                                log.debug("新文件已加入: {}", fullPath);
+                            }
                             } catch (IOException e) {
                                 log.warn("处理新文件失败: {}", fullPath, e);
                             }
@@ -161,7 +165,34 @@ public class DesktopIconServiceImpl implements IDesktopIconService {
 
     @Override
     public void hideFile(String filePath) {
+        if (!WindowsApiUtil.isFileHidden(filePath)) {
+            hiddenFiles.add(filePath);
+        }
         WindowsApiUtil.hideFile(filePath);
+    }
+
+    @Override
+    public void unhideFile(String filePath) {
+        WindowsApiUtil.unhideFile(filePath);
+        hiddenFiles.remove(filePath);
+    }
+
+    @Override
+    public void unhideAllHiddenFiles() {
+        if (hiddenFiles.isEmpty()) {
+            return;
+        }
+        log.info("正在恢复 {} 个文件...", hiddenFiles.size());
+        for (String path : hiddenFiles) {
+            try {
+                WindowsApiUtil.unhideFile(path);
+                log.debug("已恢复文件: {}", path);
+            } catch (Exception e) {
+                log.warn("恢复文件失败: {}", path, e);
+            }
+        }
+        hiddenFiles.clear();
+        log.info("所有文件已恢复");
     }
 
     @Override

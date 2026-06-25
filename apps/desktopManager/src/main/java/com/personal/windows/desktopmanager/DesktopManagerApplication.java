@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -38,6 +39,8 @@ public class DesktopManagerApplication extends Application {
 
     private static FileLock instanceLock;
     private static FileChannel lockChannel;
+    private static DesktopManagerApplication instance;
+    private final AtomicBoolean cleanupDone = new AtomicBoolean(false);
 
     private IConfigService configService;
     private IDesktopIconService desktopIconService;
@@ -50,12 +53,17 @@ public class DesktopManagerApplication extends Application {
     @Override
     public void start(Stage primaryStage) {
         log.info("DesktopManager 启动中...");
+        instance = this;
+
+        Platform.setImplicitExit(false);
 
         initServices();
         initTrayAndWindow(primaryStage);
 
         primaryStage.show();
         log.info("主界面已显示");
+
+        iconManageController.loadData();
 
         CompletableFuture.runAsync(this::initializeApp);
 
@@ -147,26 +155,25 @@ public class DesktopManagerApplication extends Application {
             return;
         }
         Platform.runLater(() -> {
-            if (iconManageController != null) {
-                iconManageController.loadData();
+            try {
+                if (iconManageController != null) {
+                    iconManageController.loadData();
+                }
+            } catch (Exception e) {
+                log.error("刷新数据失败", e);
             }
-            if (mainStage.isShowing()) {
-                mainStage.toFront();
-            } else {
-                mainStage.show();
-            }
+            mainStage.show();
+            mainStage.toFront();
         });
     }
 
     private void exitApplication() {
         log.info("正在退出 DesktopManager...");
 
+        doCleanup();
+
         CompletableFuture.runAsync(() -> {
-            try {
-                desktopIconService.showDesktopIcons();
-            } catch (Exception e) {
-                log.error("恢复桌面图标失败", e);
-            }
+            cleanupDone.set(true);
             desktopIconService.stopFileWatcher();
             releaseInstanceLock();
         }).thenRun(() -> Platform.runLater(() -> {
@@ -191,8 +198,30 @@ public class DesktopManagerApplication extends Application {
     @Override
     public void stop() {
         log.info("Application.stop() 被调用");
+        doCleanup();
         if (desktopIconService != null) {
             desktopIconService.stopFileWatcher();
+        }
+        releaseInstanceLock();
+    }
+
+    private void doCleanup() {
+        if (!cleanupDone.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            if (desktopIconService != null) {
+                desktopIconService.showDesktopIcons();
+                desktopIconService.unhideAllHiddenFiles();
+            }
+        } catch (Exception e) {
+            log.error("恢复桌面图标失败", e);
+        }
+    }
+
+    private static void staticCleanup() {
+        if (instance != null) {
+            instance.doCleanup();
         }
         releaseInstanceLock();
     }
@@ -213,13 +242,14 @@ public class DesktopManagerApplication extends Application {
     public static void main(String[] args) {
         System.setProperty("file.encoding", "UTF-8");
         System.setProperty("sun.jnu.encoding", "UTF-8");
+        System.setProperty("awt.useSystemAAFontSettings", "on");
 
         if (!acquireInstanceLock()) {
             showAlreadyRunningDialog();
             return;
         }
 
-        Runtime.getRuntime().addShutdownHook(new Thread(DesktopManagerApplication::releaseInstanceLock));
+        Runtime.getRuntime().addShutdownHook(new Thread(DesktopManagerApplication::staticCleanup));
         launch(args);
     }
 

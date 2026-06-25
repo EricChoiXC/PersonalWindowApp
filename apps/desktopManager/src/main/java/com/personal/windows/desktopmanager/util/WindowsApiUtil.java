@@ -94,6 +94,32 @@ public final class WindowsApiUtil {
         }
     }
 
+    public static void unhideFile(String filePath) {
+        try {
+            int attrs = Kernel32Lib.INSTANCE.GetFileAttributesW(filePath);
+            if (attrs == INVALID_FILE_ATTRIBUTES) {
+                throw new DesktopIconException("获取文件属性失败: " + filePath);
+            }
+            boolean result = Kernel32Lib.INSTANCE.SetFileAttributesW(filePath, attrs & ~FILE_ATTRIBUTE_HIDDEN);
+            if (!result) {
+                throw new DesktopIconException("取消文件隐藏属性失败: " + filePath);
+            }
+        } catch (Exception e) {
+            if (e instanceof DesktopIconException) {
+                throw (DesktopIconException) e;
+            }
+            throw new DesktopIconException("取消文件隐藏属性失败: " + filePath, e);
+        }
+    }
+
+    public static boolean isFileHidden(String filePath) {
+        int attrs = Kernel32Lib.INSTANCE.GetFileAttributesW(filePath);
+        if (attrs == INVALID_FILE_ATTRIBUTES) {
+            return false;
+        }
+        return (attrs & FILE_ATTRIBUTE_HIDDEN) != 0;
+    }
+
     public static String getDesktopPathFromRegistry() {
         try {
             String path = Advapi32Util.registryGetStringValue(
