@@ -80,9 +80,9 @@ public class DesktopManagerApplication extends Application {
         createMainWindow(primaryStage);
 
         trayManager = new SystemTrayManager(
-                desktopIconService,
                 this::showMainWindow,
-                this::exitApplication);
+                this::exitApplication,
+                primaryStage);
         trayManager.createTrayIcon();
     }
 

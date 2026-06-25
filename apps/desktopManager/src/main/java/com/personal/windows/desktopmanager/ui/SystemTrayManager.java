@@ -1,11 +1,8 @@
 package com.personal.windows.desktopmanager.ui;
 
 import java.awt.AWTException;
-import java.awt.Font;
-import java.awt.GraphicsEnvironment;
 import java.awt.Image;
-import java.awt.MenuItem;
-import java.awt.PopupMenu;
+import java.awt.MouseInfo;
 import java.awt.SystemTray;
 import java.awt.Toolkit;
 import java.awt.TrayIcon;
@@ -14,7 +11,12 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.net.URL;
 
-import com.personal.windows.desktopmanager.service.IDesktopIconService;
+import javafx.application.Platform;
+import javafx.scene.Node;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SeparatorMenuItem;
+import javafx.stage.Stage;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,18 +25,16 @@ public class SystemTrayManager {
 
     private static final Logger log = LoggerFactory.getLogger(SystemTrayManager.class);
 
-    private final IDesktopIconService desktopIconService;
     private final Runnable onShowWindow;
     private final Runnable onExit;
+    private final Stage ownerStage;
 
     private TrayIcon trayIcon;
-    private Font menuFont;
 
-    public SystemTrayManager(IDesktopIconService desktopIconService,
-                             Runnable onShowWindow, Runnable onExit) {
-        this.desktopIconService = desktopIconService;
+    public SystemTrayManager(Runnable onShowWindow, Runnable onExit, Stage ownerStage) {
         this.onShowWindow = onShowWindow;
         this.onExit = onExit;
+        this.ownerStage = ownerStage;
     }
 
     public void createTrayIcon() {
@@ -43,26 +43,8 @@ public class SystemTrayManager {
             return;
         }
 
-        SystemTray tray = SystemTray.getSystemTray();
-        menuFont = resolveCjkFont();
-
-        PopupMenu popup = new PopupMenu();
-        popup.setFont(menuFont);
-
-        MenuItem showItem = new MenuItem("图标");
-        showItem.setFont(menuFont);
-        showItem.addActionListener(e -> onShowWindow.run());
-        popup.add(showItem);
-
-        popup.addSeparator();
-
-        MenuItem exitItem = new MenuItem("退出");
-        exitItem.setFont(menuFont);
-        exitItem.addActionListener(e -> onExit.run());
-        popup.add(exitItem);
-
         Image iconImage = createTrayImage();
-        trayIcon = new TrayIcon(iconImage, "桌面管家", popup);
+        trayIcon = new TrayIcon(iconImage, "桌面管家", null);
         trayIcon.setImageAutoSize(true);
 
         trayIcon.addMouseListener(new MouseAdapter() {
@@ -70,16 +52,51 @@ public class SystemTrayManager {
             public void mouseClicked(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON1) {
                     onShowWindow.run();
+                } else if (e.getButton() == MouseEvent.BUTTON3) {
+                    showContextMenu(e);
                 }
             }
         });
 
         try {
-            tray.add(trayIcon);
+            SystemTray.getSystemTray().add(trayIcon);
             log.info("系统托盘图标已创建");
         } catch (AWTException e) {
             log.error("创建系统托盘失败", e);
         }
+    }
+
+    private void showContextMenu(MouseEvent e) {
+        double screenX = e.getXOnScreen();
+        double screenY = e.getYOnScreen();
+        if (screenX <= 0 && screenY <= 0) {
+            java.awt.PointerInfo pi = MouseInfo.getPointerInfo();
+            if (pi != null) {
+                screenX = pi.getLocation().x;
+                screenY = pi.getLocation().y;
+            }
+        }
+        Platform.runLater(() -> showJavaFXMenu(screenX, screenY));
+    }
+
+    private void showJavaFXMenu(double screenX, double screenY) {
+        Node anchor = ownerStage.getScene() != null ? ownerStage.getScene().getRoot() : null;
+        if (anchor == null) {
+            log.warn("无法获取 JavaFX Scene 根节点，右键菜单无法显示");
+            return;
+        }
+
+        ContextMenu menu = new ContextMenu();
+        menu.setStyle("-fx-font-family: 'Microsoft YaHei', 'SimSun', 'SimHei', sans-serif;");
+
+        MenuItem showItem = new MenuItem("图标");
+        showItem.setOnAction(ev -> onShowWindow.run());
+
+        MenuItem exitItem = new MenuItem("退出");
+        exitItem.setOnAction(ev -> onExit.run());
+
+        menu.getItems().addAll(showItem, new SeparatorMenuItem(), exitItem);
+        menu.show(anchor, screenX, screenY);
     }
 
     public void removeTrayIcon() {
@@ -107,37 +124,5 @@ public class SystemTrayManager {
         g.drawString("D", 2, 13);
         g.dispose();
         return image;
-    }
-
-    private Font resolveCjkFont() {
-        String[] candidates = {
-            "Microsoft YaHei", "微软雅黑", "Microsoft YaHei UI",
-            "SimSun", "宋体",
-            "SimHei", "黑体",
-            "Microsoft JhengHei", "微軟正黑體",
-            "FangSong", "仿宋",
-            "KaiTi", "楷体"
-        };
-        Font[] allFonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
-        for (String name : candidates) {
-            for (Font f : allFonts) {
-                if (name.equalsIgnoreCase(f.getFontName()) || name.equalsIgnoreCase(f.getFamily())) {
-                    Font derived = f.deriveFont(Font.PLAIN, 12f);
-                    if (derived.canDisplayUpTo("图标退出桌面管家") == -1) {
-                        log.info("托盘菜单字体: {}", f.getFontName());
-                        return derived;
-                    }
-                }
-            }
-        }
-        for (String name : candidates) {
-            Font f = new Font(name, Font.PLAIN, 12);
-            if (f.canDisplayUpTo("图标退出桌面管家") == -1) {
-                log.info("托盘菜单字体(直接创建): {}", name);
-                return f;
-            }
-        }
-        log.warn("未找到支持中文的字体，托盘菜单可能显示异常");
-        return new Font(Font.DIALOG, Font.PLAIN, 12);
     }
 }
