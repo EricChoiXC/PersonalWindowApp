@@ -122,6 +122,17 @@ public class IconManageController {
                 }
             };
 
+            cell.setOnDragDetected(event -> {
+                if (cell.getItem() == null) {
+                    return;
+                }
+                Dragboard db = cell.startDragAndDrop(TransferMode.MOVE);
+                ClipboardContent content = new ClipboardContent();
+                content.putString("GROUP:" + cell.getItem().getId());
+                db.setContent(content);
+                event.consume();
+            });
+
             cell.setOnDragOver(event -> {
                 if (event.getGestureSource() != cell && event.getDragboard().hasString()) {
                     event.acceptTransferModes(TransferMode.MOVE);
@@ -133,10 +144,21 @@ public class IconManageController {
                 Dragboard db = event.getDragboard();
                 boolean success = false;
                 if (db.hasString()) {
-                    String filePath = db.getString();
+                    String data = db.getString();
                     GroupVo targetGroup = cell.getItem();
-                    if (targetGroup != null) {
-                        moveFileToGroup(filePath, targetGroup.getId());
+                    if (targetGroup == null) {
+                        event.setDropCompleted(false);
+                        event.consume();
+                        return;
+                    }
+                    if (data.startsWith("GROUP:")) {
+                        String sourceGroupId = data.substring(6);
+                        if (!sourceGroupId.equals(targetGroup.getId())) {
+                            reorderGroup(sourceGroupId, targetGroup.getId());
+                            success = true;
+                        }
+                    } else {
+                        moveFileToGroup(data, targetGroup.getId());
                         success = true;
                     }
                 }
@@ -205,6 +227,9 @@ public class IconManageController {
                 && group.getId().equals(groupService.getDefaultGroupId());
 
         MenuItem renameItem = new MenuItem("重命名");
+        if (isDefaultGroup) {
+            renameItem.setDisable(true);
+        }
         renameItem.setOnAction(e -> showRenameDialog(group));
 
         MenuItem deleteItem = new MenuItem("删除");
@@ -293,6 +318,33 @@ public class IconManageController {
         } catch (BusinessException e) {
             showAlert("错误", e.getMessage());
         }
+    }
+
+    private void reorderGroup(String sourceGroupId, String targetGroupId) {
+        int sourceIndex = -1;
+        int targetIndex = -1;
+        for (int i = 0; i < groupItems.size(); i++) {
+            if (groupItems.get(i).getId().equals(sourceGroupId)) {
+                sourceIndex = i;
+            }
+            if (groupItems.get(i).getId().equals(targetGroupId)) {
+                targetIndex = i;
+            }
+        }
+        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex == targetIndex) {
+            return;
+        }
+
+        GroupVo sourceItem = groupItems.remove(sourceIndex);
+        groupItems.add(targetIndex, sourceItem);
+
+        java.util.List<String> orderedIds = new java.util.ArrayList<>();
+        for (GroupVo g : groupItems) {
+            orderedIds.add(g.getId());
+        }
+        groupService.reorderGroups(orderedIds);
+
+        groupListView.getSelectionModel().select(targetIndex);
     }
 
     private void loadFilesForGroup(String groupId) {

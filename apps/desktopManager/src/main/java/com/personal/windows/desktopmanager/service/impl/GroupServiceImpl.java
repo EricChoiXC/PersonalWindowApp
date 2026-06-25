@@ -42,7 +42,7 @@ public class GroupServiceImpl implements IGroupService {
         List<GroupDo> groups = configService.loadGroups();
         if (groups.isEmpty()) {
             String defaultId = getDefaultGroupId();
-            GroupDo defaultGroup = new GroupDo(defaultId, "未命名", 0);
+            GroupDo defaultGroup = new GroupDo(defaultId, "默认", 0);
             groups.add(defaultGroup);
             configService.saveGroups(groups);
             log.info("已自动创建默认分组: {}", defaultId);
@@ -51,6 +51,18 @@ public class GroupServiceImpl implements IGroupService {
         Map<String, String> mapping = configService.loadFileGroupMapping();
 
         Map<String, Integer> fileCounts = computeFileCounts(mapping);
+
+        List<DesktopFileVo> desktopFiles = desktopIconService.scanDesktopFiles();
+        int unmappedCount = 0;
+        for (DesktopFileVo file : desktopFiles) {
+            if (!mapping.containsKey(file.getFilePath())) {
+                unmappedCount++;
+            }
+        }
+        if (unmappedCount > 0) {
+            String defaultGroupId = getDefaultGroupId();
+            fileCounts.merge(defaultGroupId, unmappedCount, Integer::sum);
+        }
 
         return groups.stream()
                 .sorted(Comparator.comparingInt(GroupDo::getOrder))
@@ -91,6 +103,13 @@ public class GroupServiceImpl implements IGroupService {
         }
 
         List<GroupDo> groups = configService.loadGroups();
+
+        boolean nameExists = groups.stream()
+                .anyMatch(g -> g.getName().equals(name.trim()));
+        if (nameExists) {
+            throw new BusinessException("已存在同名分组");
+        }
+
         int maxOrder = groups.stream().mapToInt(GroupDo::getOrder).max().orElse(-1);
 
         GroupDo newGroup = new GroupDo();
@@ -215,6 +234,26 @@ public class GroupServiceImpl implements IGroupService {
             return "g-default";
         }
         return groups.get(0).getId();
+    }
+
+    @Override
+    public void reorderGroups(java.util.List<String> orderedGroupIds) {
+        List<GroupDo> groups = configService.loadGroups();
+        java.util.Map<String, GroupDo> groupMap = new java.util.HashMap<>();
+        for (GroupDo g : groups) {
+            groupMap.put(g.getId(), g);
+        }
+
+        for (int i = 0; i < orderedGroupIds.size(); i++) {
+            GroupDo g = groupMap.get(orderedGroupIds.get(i));
+            if (g != null) {
+                g.setOrder(i);
+            }
+        }
+
+        groups.sort(Comparator.comparingInt(GroupDo::getOrder));
+        configService.saveGroups(groups);
+        log.info("分组排序已更新");
     }
 
     private Map<String, Integer> computeFileCounts(Map<String, String> mapping) {

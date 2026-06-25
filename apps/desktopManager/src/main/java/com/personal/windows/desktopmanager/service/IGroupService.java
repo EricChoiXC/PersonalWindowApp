@@ -22,5 +22,7 @@ public interface IGroupService {
 
     List<DesktopFileVo> refreshFiles(String groupId);
 
+    void reorderGroups(java.util.List<String> orderedGroupIds);
+
     String getDefaultGroupId();
 }

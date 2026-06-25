@@ -34,6 +34,12 @@
     -fx-background-color: #e8e8e8;
 }
 
+.group-list .list-cell:drag-over {
+    -fx-border-color: #4a90d9;
+    -fx-border-width: 2;
+    -fx-border-radius: 2;
+}
+
 .group-list .list-cell:selected {
     -fx-background-color: #d0e4f7;
     -fx-text-fill: #1a1a1a;

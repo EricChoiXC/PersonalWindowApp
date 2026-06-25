@@ -25,7 +25,7 @@ public class ConfigServiceImpl implements IConfigService {
     private static final Logger log = LoggerFactory.getLogger(ConfigServiceImpl.class);
 
     private static final String DEFAULT_GROUP_ID = "g-default";
-    private static final String DEFAULT_GROUP_NAME = "未命名";
+    private static final String DEFAULT_GROUP_NAME = "默认";
 
     private final ObjectMapper objectMapper;
     private final Path configFile;
